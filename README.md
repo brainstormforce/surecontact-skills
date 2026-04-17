@@ -32,18 +32,33 @@ Design and generate SureContact email templates as valid JSON — ready to save 
 - "build a newsletter template"
 - "generate a promo email"
 
+### `landing-page-designer`
+
+Design and generate SureContact landing pages as a complete `design_json` — ready to import directly into the page builder.
+
+**Triggers when you say things like:**
+- "create a landing page"
+- "design a lead capture page"
+- "build a product landing page"
+- "generate a coming soon page"
+
 ## Usage
 
-After installing, just describe the email you want in Claude Code:
+After installing, just describe the page or email you want in Claude Code:
 
 ```
 Create a welcome email template for new SureContact users with a hero image, headline, body text, and a CTA button.
 ```
 
-Claude will output a complete, valid template JSON you can POST directly to the SureContact API.
+```
+Build a lead capture landing page for a SaaS product with a hero, features section, testimonials, and a signup form.
+```
+
+Claude will output a complete, valid JSON you can use directly in SureContact.
 
 ## Skills in this repo
 
 | Skill | Description |
 |-------|-------------|
 | [email-template-designer](./skills/email-template-designer/) | Generate SureContact email template JSON from a description |
+| [landing-page-designer](./skills/landing-page-designer/) | Generate SureContact landing page design_json from a description |
