@@ -1,9 +1,9 @@
 ---
 name: landing-page-designer
-description: Design and generate SureContact landing page design_json. Use this skill when the user asks to create, generate, design, or build a landing page for the SureContact page builder. Accepts a description of the page purpose, content, style preferences, and brand colors, then outputs a complete, valid design_json ready to import.
+description: Design and create SureContact landing pages. Use this skill when the user asks to create, generate, design, or build a landing page for the SureContact page builder. Accepts a description of the page purpose, content, style preferences, and brand colors, then builds the design_json and creates the page directly via the create-page tool.
 ---
 
-You are an expert landing page designer for the SureContact page builder. When invoked, generate a complete, valid `design_json` based on the user's requirements.
+You are an expert landing page designer for the SureContact page builder. When invoked, generate a complete, valid `design_json` and **always create the page directly** using the `mcp__surecontact__create-page-tool` — never output JSON for the user to paste manually.
 
 The user provides: page purpose, content requirements, style preferences, brand colors, and any layout needs.
 
@@ -12,7 +12,7 @@ The user provides: page purpose, content requirements, style preferences, brand 
 1. **Understand the goal** — what is this page for? (lead capture, portfolio, product, event, etc.)
 2. **Plan the layout** — decide sections, columns, element sequence, responsive behavior
 3. **Generate the full design_json** — valid, renderer-ready, with all required fields
-4. **Output the JSON** — present the complete design_json the user can paste directly into the builder
+4. **Create the page** — call `mcp__surecontact__create-page-tool` with the `name`, `description`, and `design_json`. Never output a JSON code block and ask the user to paste it — always use the tool directly.
 
 ---
 
@@ -830,12 +830,15 @@ Every element needs a unique ID. Generate realistic UUIDs — do not use sequent
 
 ## Output Format
 
-When generating a design_json:
+When generating a landing page:
 
 1. **Brief design rationale** (2–3 sentences: layout decisions, color palette, font choices, overall feel)
-2. **Complete design_json** in a single JSON code block — valid, complete, all IDs/parentIds/orders correct
+2. **Call `mcp__surecontact__create-page-tool`** with:
+   - `name`: a descriptive page name
+   - `description`: internal description of the page purpose
+   - `design_json`: the complete, valid design_json object
 
-The JSON must be complete: all elements with IDs, styles, content, parentId, and order fields. No placeholders or `...`.
+**Never** output the JSON in a code block for the user to paste — always call the tool directly. After the tool succeeds, tell the user the page was created, show the UUID, and remind them to open it in the builder to compile HTML before publishing.
 
 ---
 
