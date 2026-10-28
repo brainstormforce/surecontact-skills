@@ -71,7 +71,7 @@ Choose one and execute it fully. Never blend aesthetics — inconsistency reads 
 - A section background color that clashes with adjacent sections
 - Stacking 2+ primary buttons in the same section
 - Leaving images empty without noting they're placeholders
-- A footer with no unsubscribe link
+- A footer with no `{{manage_preferences_url}}` link
 - Padding that's too tight — email feels cluttered below `padding: "32px 24px"` on sections
 
 ---
@@ -322,7 +322,9 @@ null
 
 `{{workspace.name}}` · `{{workspace.company_name}}` · `{{workspace.address}}`
 
-`{{unsubscribe_url}}` · `{{preferences_url}}` · `{{view_in_browser_url}}`
+`{{manage_preferences_url}}` · `{{view_in_browser_url}}`
+
+`{{manage_preferences_url}}` is the single unified link for unsubscribing and managing list preferences. Never use the legacy `{{unsubscribe_url}}` or `{{preferences_url}}`.
 
 Use fallbacks: `{{contact.first_name || "there"}}`
 
@@ -470,9 +472,7 @@ Every template must end with an unsubscribe footer:
 <tr>
   <td style="background-color:[footerBg];padding:24px;text-align:center;">
     <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;line-height:1.6;">
-      <a href="{{unsubscribe_url}}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a>
-      &middot;
-      <a href="{{preferences_url}}" style="color:#9ca3af;text-decoration:underline;">Preferences</a>
+      <a href="{{manage_preferences_url}}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe or manage preferences</a>
       &middot;
       <a href="{{view_in_browser_url}}" style="color:#9ca3af;text-decoration:underline;">View in browser</a>
     </p>
@@ -650,6 +650,6 @@ To update an existing template: use `update-template-tool` with the template UUI
 - [ ] No duplicate IDs
 - [ ] Container elements (section, columns, column) have `content: null`
 - [ ] Image/logo/video `content` is `""` (empty string, never a URL)
-- [ ] Footer includes `{{unsubscribe_url}}`, `{{preferences_url}}`, `{{workspace.address}}`
+- [ ] Footer includes `{{manage_preferences_url}}` and `{{workspace.address}}` (no `{{unsubscribe_url}}` or `{{preferences_url}}`)
 - [ ] `html_content` mirrors design_json layout and section order
 - [ ] Both fields passed to MCP — `design_json.elements` is not empty
