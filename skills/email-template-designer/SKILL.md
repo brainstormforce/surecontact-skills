@@ -1,83 +1,151 @@
 ---
 name: email-template-designer
-description: Design and generate SureContact email templates as valid JSON. Use this skill when the user asks to create, generate, design, or build an email template for the SureContact email builder. Accepts a description of the email purpose, content, and style preferences, then outputs a complete, valid template JSON ready to save via the API.
+description: "Design and generate SureContact email templates. Use this skill when the user asks to create, generate, design, or build an email template for the SureContact email builder. Accepts a description of the email purpose, content, and style preferences, then generates a complete template and saves it as a draft via the SureContact MCP create-template-tool."
 ---
 
-You are an expert email template designer for the SureContact email builder. When invoked, you will generate a complete, valid email template JSON based on the user's requirements.
-
-The user provides: email purpose, content requirements, style preferences, brand colors, and any special layout needs.
+You are an expert email designer for the SureContact builder. When invoked, generate a complete template — design_json AND html_content — then save it as a draft via MCP.
 
 ## Your Job
 
-1. **Understand the goal** — what is this email for? (newsletter, promo, transactional, welcome, etc.)
-2. **Plan the layout** — decide sections, columns, element sequence
-3. **Generate the full template JSON** — valid, Gmail-safe, ready to POST to the API
-4. **Output the JSON** — present the complete template JSON the user can use directly
+1. **Define the brief** — purpose, audience, emotional tone, one memorable design decision
+2. **Choose an aesthetic direction** — commit to one, execute it with precision
+3. **Generate `design_json`** — the visual builder block tree
+4. **Generate `html_content`** — table-based HTML rendering of the same design (backend does NOT render this from design_json)
+5. **Save via MCP** — call `create-template-tool` with both fields; confirm UUID
+
+**Rule**: Always pass both `html_content` AND `design_json` together. `design_json.elements` must be populated — never an empty array. The template is saved as a draft; the user edits and sends from the SureContact UI.
 
 ---
 
-## Template Root Structure
+## Design Brief (Run Before Building)
 
-Every template must have this root shape:
+Present all four questions below to the user **in a single message** before starting. Do not split them across multiple messages or popups. Do not begin generating the template until the user has responded.
+
+If the user's request already answers some of these, pre-fill those and only ask what's missing — still in one message. Make it feel like a quick creative intake, not a form.
+
+1. **What's this email for?** One sentence — e.g. "welcome new signups", "announce a product update", "re-engage inactive users", "send a Black Friday promo"
+2. **What's your primary brand color?** Hex preferred (e.g. `#1a73e8`), or describe it: "dark navy", "coral red", "forest green" — this drives the whole palette
+3. **Who's getting it?** e.g. "new free users who haven't activated yet", "paying Pro customers", "cold leads from a webinar"
+4. **What's the one action they should take?** e.g. "click to upgrade", "watch the video", "book a demo", "reply to this email"
+
+Use the brand color from question 2 as the palette foundation. **Never default to purple unless the user says so.**
+
+---
+
+## Aesthetic Directions
+
+Choose one and execute it fully. Never blend aesthetics — inconsistency reads as unpolished.
+
+| Direction | Palette | Typography | Feel |
+|---|---|---|---|
+| **Minimal Editorial** | Off-white canvas, near-black text, 1 ink accent | Large serif heading + small sans body | Quiet, considered, premium |
+| **Dark Luxury** | Near-black background, white/cream text, gold or teal accent | Display serif + light-weight body | High-end, dramatic, atmospheric |
+| **Bold Promo** | Deep brand color hero, white body, high-contrast button | Heavy sans heading + medium sans body | Energetic, direct, commercial |
+| **Warm Personal** | Warm white/cream card, dark text, muted warm accent | Friendly rounded sans throughout | Human, approachable, relational |
+| **Clean SaaS** | Pure white card, gray canvas, single blue/violet CTA | Geometric sans throughout | Trustworthy, functional, clear |
+| **Announcement** | Brand hero section, white body, accent rule or badge | Large bold headline + body copy | Confident, newsworthy, authoritative |
+| **Transactional** | White throughout, minimal styling, blue/green trust accents | System sans, no decorative choices | Neutral, clear, friction-free |
+
+---
+
+## Copy Rules — Apply to Every Email
+
+**No em dashes.** Replace every `—` with a comma, a period, or restructure the sentence. Em dashes are a dead giveaway that the copy was generated.
+
+**Write like a person, not a product team.** The test: would a real person at the company write this to a colleague? If not, rewrite it.
+
+- Short sentences. One idea per sentence.
+- Use contractions: "it's", "you're", "we've", "here's"
+- No corporate language: "leverage", "implement", "utilize", "streamline", "robust", "seamless", "powerful"
+- Conversational rhythm: short para, punchy line, short para
+- The greeting should feel personal, not formulaic
+- Avoid passive voice: "we rebuilt" not "the rebuild was completed"
+- Never start with "We are excited to announce"
+
+**Background defaults — use transparent unless there's a reason not to.** Most email sections should be transparent or white. The only sections that earn a colored background are the hero (optional) and the CTA (recommended). Never use dark backgrounds as the default aesthetic. Users build on top of these templates — they need to feel neutral and flexible.
+
+---
+
+- Generic white card with a centered purple gradient button and no visual tension
+- More than 2 font sizes in a single section
+- A section background color that clashes with adjacent sections
+- Stacking 2+ primary buttons in the same section
+- Leaving images empty without noting they're placeholders
+- A footer with no `{{manage_preferences_url}}` link
+- Padding that's too tight — email feels cluttered below `padding: "32px 24px"` on sections
+
+---
+
+## Copy Rules
+
+Apply to every word of generated copy — subject lines, headlines, body text, CTAs, feature descriptions, everywhere.
+
+- **No em dashes.** Replace with a period, comma, or colon. "Questions upfront, not mid-build." not "Questions upfront — not mid-build."
+- **No AI filler.** Cut: seamless, powerful, robust, game-changing, effortlessly, streamline, revolutionize, innovative, cutting-edge, next-level, unlock, leverage
+- **Write like a human.** Short sentences. Warm, direct, conversational. One idea per sentence.
+- **Contractions are good.** "You're", "don't", "it's", "here's" — they make copy feel like a person wrote it.
+- **Active voice.** "We rebuilt this" not "This has been rebuilt." "It generates the HTML" not "HTML is generated."
+- **CTAs are actions, not labels.** "Start building" not "Experience seamless design." "See what changed" not "Explore the new features."
+- **No standalone dramatic one-word sentences.** Copy flows, it doesn't perform.
+- **Greetings are personal.** Always use `{{contact.first_name || "there"}}`. The email opens with the person's name, not a brand blast.
+
+---
+
+## Background and Color Defaults
+
+- **Canvas**: `transparent` by default. Only set a canvas color if it genuinely serves the design.
+- **Sections**: `transparent` or `#ffffff` for most sections. Use a tinted background (`#f5f0ff`, `#fdf8f0`, `#f0f4f7`) only for visual rhythm, not decoration.
+- **Dark sections**: Use sparingly. One dark section per email maximum (usually the CTA). Never make the whole email dark unless the brand explicitly lives in dark mode.
+- **Brand color**: Only where it creates contrast or draws attention. Not on everything.
+
+---
+
+
 
 ```json
 {
   "name": "Template Name",
   "subject": "Email subject line",
-  "preview_text": "Short preview text shown in inbox",
+  "preview_text": "Inbox preview text — max 90 characters",
   "containerWidth": "600px",
   "backgroundColor": "transparent",
   "canvasBackgroundColor": "#f4f4f4",
   "padding": "0px",
   "fontFamily": "Arial, Helvetica, sans-serif",
   "fontSize": "16px",
-  "lineHeight": "1.6",
-  "color": "#333333",
+  "lineHeight": "1.7",
+  "color": "#1a1a1a",
   "textAlign": "left",
-  "elements": [...],
+  "elements": [],
   "typographyStyles": {
-    "paragraph": { "fontSize": "16px", "color": "#333333", "fontWeight": "400", "lineHeight": "1.6" },
+    "paragraph": { "fontSize": "16px", "color": "#1a1a1a", "fontWeight": "400", "lineHeight": "1.7" },
     "heading1":  { "fontSize": "32px", "color": "#111111", "fontWeight": "700", "lineHeight": "1.2" },
     "heading2":  { "fontSize": "24px", "color": "#111111", "fontWeight": "600", "lineHeight": "1.3" },
     "heading3":  { "fontSize": "20px", "color": "#222222", "fontWeight": "600", "lineHeight": "1.4" },
     "heading4":  { "fontSize": "18px", "color": "#222222", "fontWeight": "500", "lineHeight": "1.4" }
   },
   "buttonStyles": {
-    "primary":   { "backgroundColor": "#8345DD", "color": "#ffffff", "borderColor": "#8345DD", "borderWidth": "0px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
-    "secondary": { "backgroundColor": "#ffffff", "color": "#8345DD", "borderColor": "#8345DD", "borderWidth": "2px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
-    "tertiary":  { "backgroundColor": "transparent", "color": "#8345DD", "borderColor": "transparent", "borderWidth": "0px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" }
+    "primary":   { "backgroundColor": "[user brand color]", "color": "#ffffff", "borderColor": "[user brand color]", "borderWidth": "0px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
+    "secondary": { "backgroundColor": "#ffffff", "color": "[user brand color]", "borderColor": "[user brand color]", "borderWidth": "2px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
+    "tertiary":  { "backgroundColor": "transparent", "color": "[user brand color]", "borderColor": "transparent", "borderWidth": "0px", "borderRadius": "6px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" }
   }
 }
 ```
 
-**Always set `containerWidth: "600px"`** — standard email width for all clients.
+Adapt `buttonStyles.primary` to the user's brand color from the design brief. **Never default to purple or black — always use the color the user gave you.** The button color is the single most powerful design decision in an email.
 
----
-
-## Element Base Shape
-
-Every element in the `elements` array:
-
+Use `googleFonts` array at root for custom fonts:
 ```json
-{
-  "id": "unique-id-here",
-  "type": "ElementType",
-  "content": "text or image URL or null",
-  "styles": {},
-  "parentId": "parent-element-id or null"
-}
+"googleFonts": [{ "family": "DM Sans", "weights": ["400", "600", "700"] }]
 ```
-
-**ID format**: `{type}-el-{random6chars}` — e.g., `section-el-a1b2c3`, `text-el-d4e5f6`
-
-**Important**: The `elements` array is FLAT. All elements live at the top level — nesting is expressed via `parentId` references only.
+Always pair with system fallback: `"'DM Sans', Arial, sans-serif"`. Outlook Windows ignores Google Fonts — Arial fallback is required.
 
 ---
 
-## All Element Types
+## Element Types
 
 ### `section` — Vertical container
-Groups other elements stacked vertically. Root-level sections have `parentId: null`.
+Root-level sections have `parentId: null`. Each section is a horizontal stripe across the email.
 
 ```json
 {
@@ -87,957 +155,501 @@ Groups other elements stacked vertically. Root-level sections have `parentId: nu
   "parentId": null,
   "styles": {
     "width": "100%",
-    "padding": "40px 20px",
+    "padding": "48px 32px",
     "gap": "20px",
-    "backgroundColor": "transparent",
+    "backgroundColor": "#ffffff",
     "margin": "0px",
     "borderRadius": "0"
   }
 }
 ```
 
-**`gap`**: spacing between child elements (e.g., `"16px"`, `"24px"`)
-**`padding`**: inner whitespace — `"top right bottom left"` or shorthand
-**`backgroundColor`**: can be hex, rgba, `"transparent"`
-**`backgroundImage`**: image URL (wrapped in url() automatically)
-**`backgroundGradient`**: gradient string e.g. `"linear-gradient(135deg, #667eea, #764ba2)"`
+`backgroundGradient`: `"linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%)"`
+
+**Spacing guide**: Logo header `"20px 32px"` · Hero `"56px 32px"` · Body `"40px 32px"` · Feature columns `"40px 24px"` · Footer `"28px 24px"`
 
 ---
 
-### `columns` — Multi-column layout
-Must only contain `column` children.
+### `columns` + `column`
+`columns` contains ONLY `column` children. `column` must have `columns` parent.
 
 ```json
-{
-  "id": "columns-el-abc123",
-  "type": "columns",
-  "content": null,
+{ "id": "columns-el-abc123", "type": "columns", "content": null, "parentId": "section-el-abc123",
+  "styles": { "gap": "24px", "padding": "0", "margin": "0px", "columnPresetId": "equal-2" } }
+```
+
+`columnPresetId`: `"single"` · `"equal-2"` · `"equal-3"` · `"equal-4"` · `"left-wide"` (66/34) · `"right-wide"` (34/66)
+
+```json
+{ "id": "column-el-abc123", "type": "column", "content": null, "parentId": "columns-el-abc123",
+  "styles": { "padding": "16px", "backgroundColor": "transparent", "verticalAlign": "top", "gap": "12px" } }
+```
+
+---
+
+### `text` — Body paragraph
+```json
+{ "id": "text-el-abc123", "type": "text", "content": "Body copy here.", "parentId": "section-el-abc123",
+  "styles": { "typographyStyle": "paragraph", "fontSize": "inherit", "color": "inherit",
+    "fontFamily": "inherit", "fontWeight": "400", "lineHeight": "inherit",
+    "textAlign": "left", "margin": "0px", "padding": "0", "backgroundColor": "transparent" } }
+```
+
+Inline HTML allowed: `<b>`, `<i>`, `<u>`, `<a href="...">`, `<br>`, `<strong>`, `<em>`
+
+Personalization: `{{contact.first_name || "there"}}` · `{{contact.company}}` · `{{workspace.name}}`
+
+---
+
+### `header` — Heading (renders as `<h1>`)
+```json
+{ "id": "header-el-abc123", "type": "header", "content": "Your Heading Here", "parentId": "section-el-abc123",
+  "styles": { "typographyStyle": "heading1", "textAlign": "center", "margin": "0px",
+    "color": "inherit", "fontFamily": "inherit" } }
+```
+
+---
+
+### `button`
+```json
+{ "id": "button-el-abc123", "type": "button", "content": "Get Started",
   "parentId": "section-el-abc123",
-  "styles": {
-    "gap": "16px",
-    "padding": "0",
-    "margin": "0px",
-    "columnPresetId": "equal-2"
-  }
-}
+  "styles": { "buttonVariant": "primary", "buttonSize": "medium", "buttonFit": "compact",
+    "href": "https://example.com", "linkTarget": "_blank", "align": "center" } }
 ```
 
-**`columnPresetId`** — required, controls column widths:
-- `"single"` — 1 column (100%)
-- `"equal-2"` — 2 equal columns (50%/50%)
-- `"equal-3"` — 3 equal columns (33%/33%/33%)
-- `"equal-4"` — 4 equal columns (25% each)
-- `"narrow-wide-2"` — 33%/67%
-- `"wide-narrow-2"` — 67%/33%
-- `"alternating-narrow-wide"` — 17%/33%/17%/33%
-- `"alternating-wide-narrow"` — 33%/17%/33%/17%
-- `"sidebar-left"` — 25%/75%
-- `"sidebar-right"` — 75%/25%
+`buttonVariant`: `"primary"` · `"secondary"` · `"tertiary"` · `"custom"`
+`buttonFit`: `"compact"` (auto width) · `"full"` (100%)
+`align`: `"left"` · `"center"` · `"right"`
+
+One primary button per section. Never stack two primary buttons.
 
 ---
 
-### `column` — Single column inside columns
-Must have a `columns` element as parent. Contains content elements.
-
+### `image`
+`content` must be `""` — user sets the actual image in the editor.
 ```json
-{
-  "id": "column-el-abc123",
-  "type": "column",
-  "content": null,
-  "parentId": "columns-el-abc123",
-  "styles": {
-    "padding": "10px",
-    "backgroundColor": "transparent",
-    "verticalAlign": "top",
-    "gap": "8px"
-  }
-}
+{ "id": "image-el-abc123", "type": "image", "content": "", "parentId": "section-el-abc123",
+  "styles": { "align": "center", "aspectRatio": "16:9", "imageSize": 100,
+    "borderRadius": "0", "margin": "0px", "alt": "Describe the image", "href": "", "linkTarget": "_blank" } }
 ```
-
-**verticalAlign**: `"top"` | `"middle"` | `"bottom"`
+`aspectRatio`: `"original"` · `"1:1"` · `"3:2"` · `"16:9"`
 
 ---
 
-### `text` — Paragraph/body text
-Supports inline HTML: `<b>`, `<i>`, `<u>`, `<a>`, `<br>`, `<strong>`, `<em>`
-
+### `logo`
+`content` must be `""` — user sets brand logo in editor.
 ```json
-{
-  "id": "text-el-abc123",
-  "type": "text",
-  "content": "Hey {{contact.first_name || \"there\"}},<br><br>Your body text here.",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "typographyStyle": "paragraph",
-    "fontSize": "inherit",
-    "color": "inherit",
-    "fontFamily": "inherit",
-    "fontWeight": "400",
-    "lineHeight": "inherit",
-    "textAlign": "left",
-    "margin": "0px",
-    "padding": "0",
-    "backgroundColor": "transparent"
-  }
-}
-```
-
-**`typographyStyle`**: `"paragraph"` | `"heading1"` | `"heading2"` | `"heading3"` | `"heading4"` | `"inherit"`
-— When set, the element inherits fontSize/color/fontWeight/lineHeight from `template.typographyStyles`
-
-**Personalization variables**: Use `{{contact.first_name || "there"}}` for merge tags
-
----
-
-### `header` — Heading text
-Renders as `<h1>`.
-
-```json
-{
-  "id": "header-el-abc123",
-  "type": "header",
-  "content": "Welcome to Our Newsletter",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "typographyStyle": "heading1",
-    "textAlign": "center",
-    "margin": "0px",
-    "color": "inherit",
-    "fontFamily": "inherit"
-  }
-}
+{ "id": "logo-el-abc123", "type": "logo", "content": "", "parentId": "section-el-abc123",
+  "styles": { "align": "center", "imageSize": 50, "margin": "0px",
+    "href": "https://yourdomain.com", "alt": "Brand Logo", "linkTarget": "_blank" } }
 ```
 
 ---
 
-### `button` — Call-to-action button
-
+### `divider`
 ```json
-{
-  "id": "button-el-abc123",
-  "type": "button",
-  "content": "Shop Now",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "buttonVariant": "primary",
-    "buttonSize": "medium",
-    "buttonFit": "compact",
-    "href": "https://example.com",
-    "linkTarget": "_blank",
-    "align": "center"
-  }
-}
+{ "id": "divider-el-abc123", "type": "divider", "content": "", "parentId": "section-el-abc123",
+  "styles": { "lineThickness": "1px", "lineStyle": "solid", "lineColor": "#e0e0e0",
+    "dividerAlignment": "center", "margin": "0px", "width": "100%" } }
 ```
-
-**`buttonVariant`**: `"primary"` | `"secondary"` | `"tertiary"` | `"custom"`
-— `primary`/`secondary`/`tertiary` inherit from `template.buttonStyles`
-— `custom` uses element's own styles
-
-**`buttonSize`**: `"small"` | `"medium"` | `"large"` | `"custom"`
-— small: 8px 16px padding, 14px font
-— medium: 12px 24px padding, 16px font
-— large: 16px 32px padding, 18px font
-
-**`buttonFit`**: `"compact"` (auto width) | `"full"` (100% width) | `"custom"`
-**`align`**: `"left"` | `"center"` | `"right"` — alignment within the container
+`lineStyle`: `"solid"` · `"dashed"` · `"dotted"` · `"double"`
 
 ---
 
-### `image` — Image element
-`content` is the image URL.
-
+### `spacer`
 ```json
-{
-  "id": "image-el-abc123",
-  "type": "image",
-  "content": "https://example.com/image.jpg",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "align": "center",
-    "aspectRatio": "original",
-    "imageSize": 100,
-    "borderRadius": "0",
-    "border": "none",
-    "margin": "0px",
-    "href": "",
-    "alt": "Description of image",
-    "linkTarget": "_blank"
-  }
-}
-```
-
-**`aspectRatio`**: `"original"` | `"1:1"` | `"3:2"` | `"2:3"` | `"16:9"`
-**`imageSize`**: 10–100 (percentage of container width)
-**`align`**: `"left"` | `"center"` | `"right"`
-**`href`**: optional click-through URL
-
----
-
-### `logo` — Brand logo
-Same as image but semantically a logo.
-
-```json
-{
-  "id": "logo-el-abc123",
-  "type": "logo",
-  "content": "https://example.com/logo.png",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "align": "center",
-    "imageSize": 60,
-    "margin": "0px",
-    "href": "https://example.com",
-    "alt": "Company Logo",
-    "linkTarget": "_blank"
-  }
-}
+{ "id": "spacer-el-abc123", "type": "spacer", "content": "", "parentId": "section-el-abc123",
+  "styles": { "height": "32px", "backgroundColor": "transparent" } }
 ```
 
 ---
 
-### `divider` — Horizontal separator
-
+### `list` / `orderedList`
 ```json
-{
-  "id": "divider-el-abc123",
-  "type": "divider",
-  "content": "",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "lineThickness": "1px",
-    "lineStyle": "solid",
-    "lineColor": "#e0e0e0",
-    "dividerAlignment": "center",
-    "margin": "0px",
-    "width": "100%"
-  }
-}
-```
-
-**`lineStyle`**: `"solid"` | `"dashed"` | `"dotted"` | `"double"`
-
----
-
-### `spacer` — Vertical whitespace
-
-```json
-{
-  "id": "spacer-el-abc123",
-  "type": "spacer",
-  "content": "",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "height": "40px",
-    "backgroundColor": "transparent"
-  }
-}
-```
-
----
-
-### `list` — Unordered bullet list
-`content` is newline-separated items OR HTML with `<li>` tags.
-
-```json
-{
-  "id": "list-el-abc123",
-  "type": "list",
+{ "id": "list-el-abc123", "type": "list",
   "content": "<li>Feature one</li><li>Feature two</li><li>Feature three</li>",
   "parentId": "section-el-abc123",
-  "styles": {
-    "listStyleType": "disc",
-    "typographyStyle": "paragraph",
-    "color": "inherit",
-    "fontSize": "inherit",
-    "margin": "0px",
-    "padding": "0px"
-  }
-}
-```
-
-**`listStyleType`**: `"disc"` | `"circle"` | `"square"` | `"none"`
-
----
-
-### `orderedList` — Numbered list
-
-```json
-{
-  "id": "ol-el-abc123",
-  "type": "orderedList",
-  "content": "<li>Step one</li><li>Step two</li><li>Step three</li>",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "typographyStyle": "paragraph",
-    "color": "inherit",
-    "fontSize": "inherit",
-    "margin": "0px",
-    "padding": "0px"
-  }
-}
+  "styles": { "listStyleType": "disc", "typographyStyle": "paragraph",
+    "color": "inherit", "fontSize": "inherit", "margin": "0px", "padding": "0px" } }
 ```
 
 ---
 
-### `social` — Social media icons
-
+### `social`
 ```json
-{
-  "id": "social-el-abc123",
-  "type": "social",
-  "content": "",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "textAlign": "center",
-    "iconSize": "48px",
-    "iconSpacing": "12px",
-    "padding": "10px 0",
-    "margin": "0px",
+{ "id": "social-el-abc123", "type": "social", "content": "", "parentId": "section-el-abc123",
+  "styles": { "textAlign": "center", "iconSize": "56px", "iconSpacing": "12px", "padding": "8px 0",
     "socialPlatforms": [
-      { "id": "facebook",  "name": "Facebook",  "url": "https://facebook.com/brand",  "enabled": true },
-      { "id": "twitter",   "name": "Twitter",   "url": "https://twitter.com/brand",   "enabled": true },
-      { "id": "linkedin",  "name": "LinkedIn",  "url": "https://linkedin.com/company/brand", "enabled": true },
-      { "id": "instagram", "name": "Instagram", "url": "https://instagram.com/brand", "enabled": true }
-    ]
-  }
-}
+      { "id": "twitter",   "name": "Twitter",  "url": "https://twitter.com/yourbrand",   "enabled": true },
+      { "id": "linkedin",  "name": "LinkedIn", "url": "https://linkedin.com/company/yourbrand", "enabled": true }
+    ] } }
 ```
+Platforms: `facebook` · `twitter` · `linkedin` · `instagram` · `youtube` · `tiktok`
 
-**Available platform IDs**: `facebook`, `twitter`, `linkedin`, `instagram`, `youtube`, `tiktok`, `whatsapp`, `telegram`, `pinterest`, `discord`, `reddit`
+**Always use `iconSize: "56px"` and `iconSpacing: "12px"`** — confirmed working defaults from the SureContact builder. Values below 32px render as invisible or 8×8px.
 
 ---
 
-### `video` — Video thumbnail with play button
-
+### `address`
 ```json
-{
-  "id": "video-el-abc123",
-  "type": "video",
-  "content": "https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg",
+{ "id": "address-el-abc123", "type": "address",
+  "content": "Your Company Name · Your Address",
   "parentId": "section-el-abc123",
-  "styles": {
-    "align": "center",
-    "href": "https://www.youtube.com/watch?v=VIDEO_ID",
-    "imageSize": 100,
-    "aspectRatio": "16:9",
-    "borderRadius": "8px"
-  }
-}
+  "styles": { "textAlign": "center", "fontSize": "12px", "color": "#9ca3af", "lineHeight": "1.5", "padding": "0" } }
 ```
 
 ---
 
-### `address` — Footer address block
-
-```json
-{
-  "id": "address-el-abc123",
-  "type": "address",
-  "content": "Company Name, 123 Main St, City, State 12345",
-  "parentId": "section-el-abc123",
-  "styles": {
-    "textAlign": "center",
-    "fontSize": "12px",
-    "color": "#666666",
-    "lineHeight": "1.5",
-    "padding": "0"
-  }
-}
-```
-
----
-
-## Parent-Child Rules
+## Parent-Child Hierarchy
 
 ```
-null (root)
+null
   └── section
-        ├── text
-        ├── header
-        ├── button
-        ├── image / logo / video
-        ├── list / orderedList
-        ├── divider / spacer
-        ├── social / address
+        ├── text / header / button / image / logo / divider / spacer / list / orderedList / social / address
         └── columns
               └── column
-                    ├── text
-                    ├── header
-                    ├── button
-                    ├── image / logo
-                    └── list / orderedList
+                    └── text / header / button / image / logo / list / orderedList
 ```
 
-**Rules**:
-- `columns` can ONLY contain `column` children — nothing else
-- `column` must always have a `columns` parent
-- All other elements are leaf nodes (no children)
-- Root-level elements must have `parentId: null`
-
----
-
-## Style Inheritance with `"inherit"`
-
-Use `"inherit"` on typography properties to defer to template-level values:
-
-```json
-"fontSize": "inherit",   // uses template.fontSize
-"color": "inherit",      // uses template.color
-"fontFamily": "inherit", // uses template.fontFamily
-"lineHeight": "inherit"  // uses template.lineHeight
-```
-
-When `typographyStyle` is set (e.g., `"paragraph"`), the element resolves its typography from `template.typographyStyles.paragraph`, and any explicit non-inherit value overrides it.
-
----
-
-## Common Section Patterns
-
-### Header section (logo + nav)
-```
-section (padding: "20px", backgroundColor: "#ffffff")
-  └── logo
-```
-
-### Hero section (image + headline + CTA)
-```
-section (padding: "0px")
-  ├── image (full-width hero image)
-  section (padding: "40px 20px", gap: "20px")
-    ├── header (typographyStyle: heading1, textAlign: center)
-    ├── text (typographyStyle: paragraph, textAlign: center)
-    └── button (buttonVariant: primary, align: center)
-```
-
-### Two-column feature section
-```
-section (padding: "40px 20px")
-  └── columns (columnPresetId: equal-2, gap: "24px")
-        ├── column
-        │     ├── image
-        │     ├── header (typographyStyle: heading3)
-        │     └── text
-        └── column
-              ├── image
-              ├── header (typographyStyle: heading3)
-              └── text
-```
-
-### Footer section
-```
-section (padding: "20px", backgroundColor: "#f8f8f8")
-  ├── divider
-  ├── social
-  ├── address
-  └── text (unsubscribe link, fontSize: "12px", textAlign: "center", color: "#999999")
-```
+`columns` → ONLY `column` children. All other elements are leaf nodes.
 
 ---
 
 ## Personalization Variables
 
-Available merge tags for `content` strings:
-- `{{contact.first_name || "there"}}` — first name with fallback
-- `{{contact.last_name}}`
-- `{{contact.email}}`
-- `{{contact.company}}`
-- `{{unsubscribe_url}}` — required in every footer
-- `{{web_view_url}}` — view in browser link
+`{{contact.first_name}}` · `{{contact.last_name}}` · `{{contact.full_name}}` · `{{contact.email}}` · `{{contact.company}}` · `{{contact.job_title}}` · `{{contact.custom.<field_name>}}`
 
-Unsubscribe link pattern (required by CAN-SPAM):
+`{{workspace.name}}` · `{{workspace.company_name}}` · `{{workspace.address}}`
+
+`{{manage_preferences_url}}` · `{{view_in_browser_url}}`
+
+`{{manage_preferences_url}}` is the single unified link for unsubscribing and managing list preferences. Never use the legacy `{{unsubscribe_url}}` or `{{preferences_url}}`.
+
+Use fallbacks: `{{contact.first_name || "there"}}`
+
+**Conditional blocks (Liquid)**:
+```
+{% if contact.tags contains "uuid" %}VIP content{% else %}Standard{% endif %}
+{% if contact.custom.plan == "pro" %}Pro perks{% elsif contact.custom.plan == "starter" %}Starter{% endif %}
+```
+Supported: `contains` · `==` · `!=` · `and` · `or` · `not` · `is empty`. Not supported: `{% for %}` · `{% assign %}` · filters.
+
+---
+
+## HTML Generation
+
+`html_content` is the actual email rendered to contacts. Generate it in parallel with design_json — same content, same sections, same visual intent, expressed as table-based HTML.
+
+### Wrapper
+
 ```html
-<a href="{{unsubscribe_url}}" target="_blank" style="color: #0066CC; text-decoration: underline;">Unsubscribe</a>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:[canvasBackgroundColor];">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+  style="background-color:[canvasBackgroundColor];">
+  <tr><td align="center" style="padding:20px 10px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+      style="width:100%;max-width:600px;background-color:#ffffff;">
+      <!-- sections here -->
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+```
+
+### Section → `<tr><td>`
+
+```html
+<tr>
+  <td style="background-color:[bg];padding:[padding];">
+    <!-- child elements -->
+  </td>
+</tr>
+```
+
+For gradient backgrounds: `background:[gradient];background-color:[fallback];`
+
+### Text + Header → inline-styled tags
+
+Resolve `typographyStyle` from `template.typographyStyles`. Explicit non-`"inherit"` values override.
+
+```html
+<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#1a1a1a;line-height:1.7;text-align:left;">
+  Hey {{contact.first_name || "there"}}, body copy here.
+</p>
+
+<h2 style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:24px;color:#111111;font-weight:600;line-height:1.3;text-align:center;">
+  Section Heading
+</h2>
+```
+
+### Button → table-based (MSO-compatible)
+
+```html
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="[left|center|right]">
+  <tr>
+    <td bgcolor="[backgroundColor]" style="border-radius:[borderRadius];background-color:[backgroundColor];">
+      <a href="[href]" target="[linkTarget]"
+        style="display:inline-block;padding:[paddingY] [paddingX];
+               font-family:Arial,Helvetica,sans-serif;font-size:[fontSize];
+               font-weight:[fontWeight];color:[color];text-decoration:none;
+               border-radius:[borderRadius];background-color:[backgroundColor];
+               border:[borderWidth] solid [borderColor];">
+        [content]
+      </a>
+    </td>
+  </tr>
+</table>
+```
+
+For `buttonFit: "full"`: outer table `width="100%"`, `<a>` gets `display:block;text-align:center;`
+
+### Columns → nested table
+
+```html
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td width="50%" style="vertical-align:top;padding:[column.padding];">
+      <!-- column 1 -->
+    </td>
+    <td width="16" style="font-size:0;line-height:0;">&nbsp;</td>
+    <td width="50%" style="vertical-align:top;padding:[column.padding];">
+      <!-- column 2 -->
+    </td>
+  </tr>
+</table>
+```
+
+Widths: `equal-2` → 50/50 · `equal-3` → 33.33 each · `left-wide` → 66/34 · `right-wide` → 34/66
+
+### Image / Logo
+
+`content` is `""` in design_json. In HTML, use a 1px transparent spacer as placeholder — user replaces in builder.
+
+```html
+<!-- image placeholder -->
+<img src="https://placehold.co/600x1/ffffff/ffffff" alt="[alt]"
+  width="100%" style="display:block;max-width:100%;border:0;" />
+```
+
+Logo: wrap in `<a href="[href]">`, center with `<td align="center">`.
+
+### Spacer
+
+```html
+<tr><td height="[height]" style="font-size:0;line-height:[height];">&nbsp;</td></tr>
+```
+
+### Divider
+
+```html
+<tr><td style="padding:0 24px;">
+  <hr style="border:0;border-top:[lineThickness] [lineStyle] [lineColor];margin:0;" />
+</td></tr>
+```
+
+### List
+
+```html
+<ul style="margin:0;padding:0 0 0 20px;font-family:Arial,Helvetica,sans-serif;
+  font-size:16px;color:#1a1a1a;line-height:1.7;list-style-type:disc;">
+  <li style="margin-bottom:8px;">Feature one</li>
+</ul>
+```
+
+### Required Footer HTML
+
+Every template must end with an unsubscribe footer:
+
+```html
+<tr>
+  <td style="background-color:[footerBg];padding:24px;text-align:center;">
+    <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;line-height:1.6;">
+      <a href="{{manage_preferences_url}}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe or manage preferences</a>
+      &middot;
+      <a href="{{view_in_browser_url}}" style="color:#9ca3af;text-decoration:underline;">View in browser</a>
+    </p>
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;line-height:1.6;">
+      {{workspace.company_name}} &middot; {{workspace.address}}
+    </p>
+  </td>
+</tr>
 ```
 
 ---
 
-## Gmail-Safe Style Guidelines
+## Design Quality Rules
 
-**Use**: `backgroundColor`, `color`, `font-*`, `padding`, `margin`, `border`, `width`, `text-align`, `line-height`
-**Avoid in critical paths**: `display: flex`, `grid`, `position: absolute/fixed`, `transform`, `animation`, `transition`, `opacity` (limited support in Outlook/Gmail)
+### The Bookend Rule
+Logo header and footer should share the same background — creates visual cohesion. If the logo is on a dark background, the footer should be dark too. White logo header + dark footer = jarring.
 
-**Font families** (email-safe fallbacks):
-- Sans-serif: `"Arial, Helvetica, sans-serif"` | `"Tahoma, Geneva, sans-serif"` | `"Verdana, Geneva, sans-serif"`
-- Serif: `"Georgia, 'Times New Roman', serif"` | `"'Palatino Linotype', Palatino, serif"`
-- Monospace: `"'Courier New', Courier, monospace"`
+### Section Contrast Rule
+The hero section must be visually distinct from the body. The two strongest contrasts are:
+- Dark hero → white body (dramatic, authoritative)
+- Tinted hero (brand color, light) → white body (warm, approachable)
+Never put the hero and body on the same background — they'll bleed together.
+
+### Typography Impact
+Email clients render fonts reliably at large sizes. Don't be timid:
+- Hero headline: **36–44px**, fontWeight 700–800 — this is where attention is captured
+- Section heading: 24–28px, fontWeight 600–700
+- Body: 16px, lineHeight 1.7–1.85 — always
+- Small label (small caps above heading): 11px, fontWeight 700, letterSpacing 1.5px
+
+### The Label Pattern — Use It For Every Feature Block
+The strongest pattern for presenting distinct features or products in email:
+```
+text (11px, 700, brand color, letterSpacing 1.5px) — "FEATURE CATEGORY"
+header (heading3, 20px, 700, near-black) — "Benefit-led headline"
+text (paragraph, 15px, muted #4b5563) — Supporting description, 2–3 sentences max
+```
+Never use just a heading + paragraph alone — the small caps label adds hierarchy that makes content scannable.
+
+### One Accent Per Section
+Use the brand color for ONE element per section: the button, or the label, or the hero background — not all three. When everything is brand-colored, nothing stands out.
+
+### Whitespace = Premium
+Generous section padding makes emails feel intentional and high-quality:
+- Logo header: `padding: "24px 32px"`
+- Hero: `padding: "64px 40px"` minimum
+- Body sections: `padding: "48px 40px"`
+- Footer: `padding: "28px 24px"`
+Never go below `padding: "32px 24px"` on any section.
+
+### Dark Footer Matching Dark Header
+When the logo header uses a dark background, the footer must also be dark. Use the same hex. Link colors in dark footers should be a light tint of the brand color (not pure white — it reads as too harsh).
 
 ---
 
-## ID Generation
+## Design Recipes
 
-Generate IDs like: `{type}-el-{6randomchars}`
+### 1 — Dark Hero Announcement
+```
+Canvas: brand dark (e.g. #0d1117 or #180B2E)
+[Logo]      bg: same as canvas, padding: "24px 32px", centered
+[Hero]      bg: linear-gradient(160deg, [brand dark], [slightly lighter dark])
+            padding: "72px 40px", gap: 16px, textAlign: center
+            header: 38–44px, 700, white
+            text: 16px, rgba(white, 0.7), center
+[Body]      bg: #ffffff, padding: "48px 40px", gap: 20px
+            text: greeting (16px, #1a1a1a)
+            text: body paragraph
+            text: "Here's what changed." (bold, dark, signals transition)
+[Features]  bg: brand tint (very light), padding: "32px 40px", gap: 10px
+            text: SMALL CAPS LABEL (11px, 700, brand color, letterSpacing 1.5px)
+            header: heading3 (20px, 700, near-black)
+            text: description (15px, #4b5563)
+[CTA]       bg: brand primary, padding: "56px 40px", center
+            header: 32px, 700, white
+            text: 15px, rgba(white, 0.85)
+            button: secondary (white bg, brand text), centered
+[Footer]    bg: brand dark (matches logo header)
+            social (56px icons) + address + unsubscribe (brand tint color links)
+```
 
-Examples:
-- `section-el-a1b2c3`
-- `text-el-x9y8z7`
-- `image-el-p4q5r6`
-- `button-el-m7n8o9`
-- `columns-el-k1l2m3`
-- `column-el-f4g5h6`
+### 2 — Minimal Editorial
+```
+Canvas: #f5f5f0
+[Logo]      bg: #ffffff, padding: "28px 40px", centered
+[Thin rule] divider: 1px #e8e8e0
+[Hero]      bg: #ffffff, padding: "56px 40px", textAlign: left
+            header: 40px, 700, near-black, left — NO decoration, just type
+            text: 18px, muted, left
+            button: tertiary with arrow ("Read more →")
+[Content]   bg: #ffffff, 2 text sections separated by dividers
+            Each: header (22px, 600) + text (16px body) — left aligned
+[CTA]       bg: #f5f5f0, centered
+            text: short, single sentence
+            button: primary (brand color, minimal padding)
+[Footer]    bg: #f5f5f0, minimal — address + unsubscribe only, no social
+```
 
-Use short, random alphanumeric suffixes. Every ID must be unique within the template.
+### 3 — Warm Welcome
+```
+Canvas: #fdf6ec (warm cream)
+[Logo]      bg: #fdf6ec, centered, padding: "24px"
+[Hero]      bg: #fdf6ec, padding: "48px 32px", gap: 16px
+            header: "Hey {{first_name}} 👋", heading2 (28px), warm near-black, center
+            text: personal body copy, warm tone, center
+[Steps]     bg: #ffffff, 3-col equal: step number (brand color, 32px, 700) + heading3 + text
+            All text inside columns: textAlign explicitly set to left
+[CTA]       bg: brand warm color, padding: "48px 32px", center
+            header: 28px, white
+            button: white bg, brand text
+[Footer]    bg: #fdf6ec, minimal
+```
+
+### 4 — Bold Promo
+```
+Canvas: #f0f0f0
+[Logo]      bg: #ffffff, centered
+[Hero image] section padding: "0", image 16:9 (full width product shot or offer visual)
+[Offer]     bg: brand deep (e.g. #1a0000 or brand primary), padding: "48px 32px", center
+            header: 40px+, white, bold offer text
+            text: 18px, rgba(white, 0.8), supporting copy
+            button: secondary (white border on dark) or accent color
+[Body]      bg: #ffffff, supporting copy + secondary CTA
+[Footer]    bg: brand deep (matches offer), dark footer pattern
+```
+
+### 5 — Clean SaaS Transactional
+```
+Canvas: #f4f4f4
+[Logo]      bg: #ffffff, centered
+[Summary]   bg: [light tint of brand], padding: "32px 40px", borderRadius implied by section
+            header: heading2, summary/confirmation message, center
+            text: key detail (order number, plan name, date), center
+[Details]   bg: #ffffff, padding: "40px 40px"
+            text blocks with specific info (left-aligned, no headers needed)
+            divider between each block
+[CTA]       bg: #ffffff, single primary button, centered
+[Support]   bg: [same tint as summary], padding: "24px 40px", center
+            text: "Questions? Reply to this email." (15px, muted)
+[Footer]    bg: #f4f4f4 (matches canvas), minimal
+```
+
+
 
 ---
 
-## Output Format
+## MCP Save Step
 
-When generating a template, output:
+After generating both design_json and html_content, call immediately:
 
-1. **Brief design rationale** (2-3 sentences: layout decisions, color choices, structure)
-2. **Complete template JSON** in a code block — valid, ready to use
+```
+Tool: create-template-tool
+name:         internal label (e.g. "Welcome Email v1")
+subject:      email subject line
+html_content: the full table-based HTML string
+design_json:  the complete design_json object
+preview_text: (optional) inbox preview snippet
+```
 
-The JSON must be complete: all elements with IDs, styles, parentId, and content.
+Do not output the JSON or HTML to the user. Call the tool, then confirm: name, UUID, subject.
+
+To update an existing template: use `update-template-tool` with the template UUID.
 
 ---
 
-## Example: Simple Newsletter Template
+## Checklist Before Saving
 
-```json
-{
-  "name": "Monthly Newsletter",
-  "subject": "Your Monthly Update",
-  "preview_text": "Here's what's new this month",
-  "containerWidth": "600px",
-  "backgroundColor": "transparent",
-  "canvasBackgroundColor": "#f0f0f0",
-  "padding": "0px",
-  "fontFamily": "Arial, Helvetica, sans-serif",
-  "fontSize": "16px",
-  "lineHeight": "1.6",
-  "color": "#333333",
-  "textAlign": "left",
-  "typographyStyles": {
-    "paragraph": { "fontSize": "16px", "color": "#333333", "fontWeight": "400", "lineHeight": "1.6" },
-    "heading1":  { "fontSize": "32px", "color": "#111111", "fontWeight": "700", "lineHeight": "1.2" },
-    "heading2":  { "fontSize": "24px", "color": "#111111", "fontWeight": "600", "lineHeight": "1.3" },
-    "heading3":  { "fontSize": "20px", "color": "#222222", "fontWeight": "600", "lineHeight": "1.4" },
-    "heading4":  { "fontSize": "18px", "color": "#222222", "fontWeight": "500", "lineHeight": "1.4" }
-  },
-  "buttonStyles": {
-    "primary":   { "backgroundColor": "#007BFF", "color": "#ffffff", "borderColor": "#007BFF", "borderWidth": "0px", "borderRadius": "4px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
-    "secondary": { "backgroundColor": "#ffffff", "color": "#007BFF", "borderColor": "#007BFF", "borderWidth": "2px", "borderRadius": "4px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" },
-    "tertiary":  { "backgroundColor": "transparent", "color": "#007BFF", "borderColor": "transparent", "borderWidth": "0px", "borderRadius": "4px", "fontSize": "16px", "fontWeight": "600", "paddingX": "24px", "paddingY": "12px" }
-  },
-  "elements": [
-    {
-      "id": "section-el-hdr001",
-      "type": "section",
-      "content": null,
-      "parentId": null,
-      "styles": { "width": "100%", "padding": "24px 20px", "gap": "0", "backgroundColor": "#007BFF", "margin": "0px", "borderRadius": "0" }
-    },
-    {
-      "id": "logo-el-hdr002",
-      "type": "logo",
-      "content": "https://via.placeholder.com/150x50",
-      "parentId": "section-el-hdr001",
-      "styles": { "align": "center", "imageSize": 50, "margin": "0px", "href": "https://example.com", "alt": "Company Logo", "linkTarget": "_blank" }
-    },
-    {
-      "id": "section-el-hero01",
-      "type": "section",
-      "content": null,
-      "parentId": null,
-      "styles": { "width": "100%", "padding": "48px 32px", "gap": "20px", "backgroundColor": "#ffffff", "margin": "0px" }
-    },
-    {
-      "id": "header-el-hero02",
-      "type": "header",
-      "content": "Hey {{contact.first_name || \"there\"}} 👋",
-      "parentId": "section-el-hero01",
-      "styles": { "typographyStyle": "heading1", "textAlign": "left", "margin": "0px", "color": "inherit", "fontFamily": "inherit" }
-    },
-    {
-      "id": "text-el-hero03",
-      "type": "text",
-      "content": "Here's what's new this month. We've been busy shipping features and we wanted to share the highlights with you.",
-      "parentId": "section-el-hero01",
-      "styles": { "typographyStyle": "paragraph", "textAlign": "left", "margin": "0px", "color": "inherit", "fontFamily": "inherit" }
-    },
-    {
-      "id": "button-el-hero04",
-      "type": "button",
-      "content": "Read the Full Update",
-      "parentId": "section-el-hero01",
-      "styles": { "buttonVariant": "primary", "buttonSize": "medium", "buttonFit": "compact", "href": "https://example.com/update", "linkTarget": "_blank", "align": "left" }
-    },
-    {
-      "id": "section-el-div001",
-      "type": "section",
-      "content": null,
-      "parentId": null,
-      "styles": { "width": "100%", "padding": "0 32px", "backgroundColor": "#ffffff", "margin": "0px", "gap": "0" }
-    },
-    {
-      "id": "divider-el-div002",
-      "type": "divider",
-      "content": "",
-      "parentId": "section-el-div001",
-      "styles": { "lineThickness": "1px", "lineStyle": "solid", "lineColor": "#e8e8e8", "width": "100%", "margin": "0px" }
-    },
-    {
-      "id": "section-el-ftr001",
-      "type": "section",
-      "content": null,
-      "parentId": null,
-      "styles": { "width": "100%", "padding": "24px 20px", "gap": "12px", "backgroundColor": "#f8f8f8", "margin": "0px" }
-    },
-    {
-      "id": "social-el-ftr002",
-      "type": "social",
-      "content": "",
-      "parentId": "section-el-ftr001",
-      "styles": {
-        "textAlign": "center", "iconSize": "40px", "iconSpacing": "10px", "padding": "0", "margin": "0px",
-        "socialPlatforms": [
-          { "id": "twitter",  "name": "Twitter",  "url": "https://twitter.com/brand",  "enabled": true },
-          { "id": "linkedin", "name": "LinkedIn", "url": "https://linkedin.com/company/brand", "enabled": true },
-          { "id": "facebook", "name": "Facebook", "url": "https://facebook.com/brand", "enabled": true }
-        ]
-      }
-    },
-    {
-      "id": "text-el-ftr003",
-      "type": "text",
-      "content": "You're receiving this because you subscribed.<br>Company Inc., 123 Main St, City, State 12345.<br><a href=\"{{unsubscribe_url}}\" target=\"_blank\" style=\"color: #999999;\">Unsubscribe</a>",
-      "parentId": "section-el-ftr001",
-      "styles": { "fontSize": "12px", "color": "#999999", "textAlign": "center", "fontFamily": "inherit", "margin": "0px", "padding": "0", "lineHeight": "1.6" }
-    }
-  ]
-}
-```
-
----
-
-## Google Fonts
-
-Google Fonts work in Gmail (web), Apple Mail, iOS Mail, and Outlook 2016+ on Mac. **Outlook on Windows will fall back to the system font** — always provide a safe fallback stack.
-
-### How to use Google Fonts
-
-Set `fontFamily` on the template root (and optionally override on individual elements):
-
-```json
-"fontFamily": "'Inter', Arial, sans-serif"
-```
-
-The font name MUST be wrapped in single quotes if it contains spaces:
-```json
-"fontFamily": "'Playfair Display', Georgia, serif"
-```
-
-### Popular Google Fonts for Email
-
-**Modern Sans-Serif** (clean, readable):
-| Font | fontFamily value | Best for |
-|------|-----------------|----------|
-| Inter | `"'Inter', Arial, sans-serif"` | SaaS, tech, newsletters |
-| Poppins | `"'Poppins', Arial, sans-serif"` | Startup, e-commerce, modern |
-| Nunito | `"'Nunito', Arial, sans-serif"` | Friendly, consumer apps |
-| DM Sans | `"'DM Sans', Arial, sans-serif"` | Minimal, professional |
-| Plus Jakarta Sans | `"'Plus Jakarta Sans', Arial, sans-serif"` | Premium SaaS |
-
-**Elegant Serif** (editorial, luxury):
-| Font | fontFamily value | Best for |
-|------|-----------------|----------|
-| Playfair Display | `"'Playfair Display', Georgia, serif"` | Luxury, editorial, fashion |
-| Lora | `"'Lora', Georgia, serif"` | Blog posts, thought leadership |
-| Merriweather | `"'Merriweather', Georgia, serif"` | Publishing, long reads |
-
-**Display / Heading Only** (use only for large headings, NOT body):
-| Font | fontFamily value | Best for |
-|------|-----------------|----------|
-| Oswald | `"'Oswald', Arial, sans-serif"` | Bold hero headlines |
-| Raleway | `"'Raleway', Arial, sans-serif"` | Events, premium products |
-| Space Grotesk | `"'Space Grotesk', Arial, sans-serif"` | Tech, Web3, developer tools |
-
-### Typography Pairing Recommendations
-
-**Pairing 1 — Classic SaaS** (clean, trustworthy):
-- Heading: `'Inter', Arial, sans-serif` at 700 weight
-- Body: `'Inter', Arial, sans-serif` at 400 weight
-
-**Pairing 2 — Editorial** (premium, readable):
-- Heading: `'Playfair Display', Georgia, serif` at 700 weight
-- Body: `'Lora', Georgia, serif` at 400 weight
-
-**Pairing 3 — Modern Bold** (energetic, startup):
-- Heading: `'Poppins', Arial, sans-serif` at 700 weight
-- Body: `'Poppins', Arial, sans-serif` at 400 weight
-
-**Pairing 4 — Professional** (corporate newsletters):
-- Heading: `'DM Sans', Arial, sans-serif` at 600–700 weight
-- Body: `'DM Sans', Arial, sans-serif` at 400 weight
-
-### Applying fonts in typographyStyles
-
-To use one font for headings and another for body:
-
-```json
-"fontFamily": "'Inter', Arial, sans-serif",
-"typographyStyles": {
-  "paragraph": { "fontSize": "16px", "color": "#444444", "fontWeight": "400", "lineHeight": "1.7" },
-  "heading1":  { "fontSize": "36px", "color": "#111111", "fontWeight": "700", "lineHeight": "1.15" },
-  "heading2":  { "fontSize": "26px", "color": "#111111", "fontWeight": "700", "lineHeight": "1.25" },
-  "heading3":  { "fontSize": "20px", "color": "#222222", "fontWeight": "600", "lineHeight": "1.35" },
-  "heading4":  { "fontSize": "17px", "color": "#333333", "fontWeight": "600", "lineHeight": "1.4" }
-}
-```
-
-To override font on a single element, set `fontFamily` directly in the element's `styles`:
-```json
-"styles": {
-  "typographyStyle": "heading1",
-  "fontFamily": "'Playfair Display', Georgia, serif",
-  "textAlign": "center"
-}
-```
-
-### Client Support Notes
-
-| Client | Google Fonts |
-|--------|-------------|
-| Gmail (web) | ✅ Supported |
-| Apple Mail (Mac/iOS) | ✅ Supported |
-| Outlook Mac | ✅ Supported |
-| Outlook Windows | ❌ Falls back to system font |
-| Samsung Email | ⚠️ Partial |
-| Yahoo Mail | ⚠️ Partial |
-
-**Rule**: Always provide a safe fallback. `'Inter', Arial, sans-serif` — if Inter fails, Arial renders.
-
----
-
-## Modern Email Design Principles
-
-### Typography Scale
-
-Use a clear hierarchy — don't use more than 3 font sizes in one section:
-
-| Role | Size | Weight | Use |
-|------|------|--------|-----|
-| Super headline | 40–48px | 800 | One per email max, hero only |
-| Heading 1 | 28–36px | 700 | Section intros |
-| Heading 2 | 22–26px | 600–700 | Sub-sections |
-| Body | 15–17px | 400 | All body copy |
-| Small / Legal | 12–13px | 400 | Footer, fine print |
-
-**Line height**: 1.15–1.25 for headings, 1.6–1.75 for body (increases readability significantly)
-
-### Color System
-
-Define a clear 4-color palette per template:
-
-```
-Primary   — brand color for buttons, links, accents (e.g., #6B4FBB)
-Neutral   — text color (e.g., #1A1A2E for dark, #666666 for light)
-Surface   — background (e.g., #FFFFFF or #F8F6FF for tinted)
-Separator — dividers and borders (e.g., #E8E8E8)
-```
-
-**Dark section on light template** — alternate `backgroundColor` between sections:
-- Body sections: `#ffffff`
-- Hero/accent sections: brand color or deep dark (`#1A1A2E`)
-- Footer: light gray (`#f5f5f7`)
-
-**Text on dark backgrounds**: set `color: "#ffffff"` on the section's child elements explicitly.
-
-### Visual Hierarchy Rules
-
-1. **One CTA per section** — don't stack multiple buttons
-2. **Contrast sections** — alternate white/tinted backgrounds to break up long emails
-3. **Images above text** — leads the eye better than text-first in most contexts
-4. **Center-align heroes** — left-align body content for readability
-5. **Generous padding** — sections: `48px 32px` minimum, tight emails feel spammy
-6. **Short paragraphs** — max 3 lines per text block in emails
-
-### Section Spacing Strategy
-
-```
-Header (logo)          → padding: "20px 32px"
-Hero (image + CTA)     → padding: "0" for image, "48px 32px" for text section
-Content sections       → padding: "40px 32px", gap: "20px"
-Feature columns        → padding: "40px 24px", column gap: "24px"
-Divider wrapper        → padding: "0 32px"
-Footer                 → padding: "28px 24px", gap: "12px"
-```
-
----
-
-## Modern Design Recipes
-
-### Recipe 1 — SaaS Product Update (Clean Minimal)
-
-```
-Palette: white + #6B4FBB accent + #F8F6FF tint
-Font: 'Inter', Arial, sans-serif
-
-[Header]  white bg, logo left-aligned
-[Hero]    #6B4FBB bg, white headline (40px), white subtext, white outlined button
-[Divider] 1px #e0d9f5
-[Feature] white bg, 3-column equal, icon + heading3 + short text per column
-[CTA]     #F8F6FF tint bg, centered heading2 + primary button
-[Footer]  white bg, social icons, 12px gray text
-```
-
-### Recipe 2 — E-commerce Promo (Bold & Conversion-focused)
-
-```
-Palette: #FF4B2B red accent + #1A1A2E dark + #FFF5F3 warm tint
-Font: 'Poppins', Arial, sans-serif (bold headings)
-
-[Header]  #1A1A2E bg, white logo, centered
-[Hero]    Full-width product image (aspectRatio: 16:9), imageSize: 100
-[Offer]   #FF4B2B bg, white big headline ("50% OFF"), white body, white button (secondary variant)
-[Products] 2-column columns, image + heading4 + price text + button per column
-[Footer]  #1A1A2E bg, white social icons, white/semi footer text
-```
-
-### Recipe 3 — Newsletter (Editorial)
-
-```
-Palette: #FAFAF8 warm white + #2C2C2C dark text + #C9A84C gold accent
-Font: 'Playfair Display' headings + 'Lora' body
-
-[Header]  #2C2C2C bg, logo center, thin gold divider below
-[Issue]   White bg, overline text ("ISSUE 12 · MARCH 2026"), big centered headline
-[Articles] Full-width image, heading2, 2-line excerpt, "Read more →" tertiary button
-[Divider] #e8e4d9 dashed
-[Repeat]  Alternate 2+ article blocks
-[Footer]  #FAFAF8 bg, address, unsubscribe
-```
-
-### Recipe 4 — Welcome / Onboarding (Warm & Personal)
-
-```
-Palette: white + #22C55E green accent + #F0FDF4 light green tint
-Font: 'Nunito', Arial, sans-serif
-
-[Header]  White bg, logo, no padding extremes
-[Hero]    #F0FDF4 tint, left-aligned "Hey {{first_name}} 👋" heading1, warm welcome body text
-[Steps]   White bg, ordered list OR 3-column columns with step number + heading + text
-[CTA]     #22C55E bg, white headline ("Get started in 2 minutes"), white primary button
-[Footer]  Light gray, social, unsubscribe
-```
-
-### Recipe 5 — Transactional (Clean & Trust-building)
-
-```
-Palette: white + #0F172A near-black + #3B82F6 blue + #F8FAFF near-white
-Font: 'DM Sans', Arial, sans-serif
-
-[Header]  White bg, logo left
-[Summary] #F8FAFF bg, heading2 ("Your receipt"), order details as text
-[Items]   White bg, columns (left-wide: 66/34), item name + qty | price
-[Divider]
-[Total]   White bg, bold total line
-[CTA]     "View Order" primary button, center-aligned
-[Support] Tint bg, "Questions? Reply to this email" + support link
-[Footer]  Standard
-```
-
----
-
-## Eye-Catching Design Techniques
-
-### Gradient section backgrounds
-
-Use `backgroundGradient` on sections for visual punch:
-
-```json
-"styles": {
-  "backgroundGradient": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  "padding": "60px 32px",
-  "gap": "24px"
-}
-```
-
-Common gradient pairs:
-- Purple: `linear-gradient(135deg, #667eea, #764ba2)`
-- Coral: `linear-gradient(135deg, #f093fb, #f5576c)`
-- Ocean: `linear-gradient(135deg, #4facfe, #00f2fe)`
-- Sunset: `linear-gradient(135deg, #fa709a, #fee140)`
-- Dark: `linear-gradient(135deg, #0f0c29, #302b63, #24243e)`
-- Green: `linear-gradient(135deg, #11998e, #38ef7d)`
-
-For text on gradient backgrounds, **always set explicit `color: "#ffffff"`** on child header and text elements.
-
-### High-contrast hero pattern
-
-```json
-[Dark hero section]
-section: backgroundColor "#1A1A2E", padding "64px 32px", gap "24px"
-  header: color "#ffffff", typographyStyle "heading1", textAlign "center", fontSize "40px"
-  text: color "#CBD5E0", typographyStyle "paragraph", textAlign "center"
-  button: buttonVariant "secondary" (white border on dark bg)
-```
-
-### Bordered/accented column cards
-
-Give columns visual card styling:
-
-```json
-column styles: {
-  "backgroundColor": "#ffffff",
-  "padding": "24px",
-  "borderRadius": "8px",
-  "border": "1px solid #e8e8e8",
-  "gap": "12px"
-}
-```
-
-### Accent line above heading
-
-Use a short, colored spacer or divider before a heading to create a visual accent:
-
-```
-section (white bg)
-  spacer (height: "4px", backgroundColor: "#6B4FBB") ← accent bar
-  header (typographyStyle: heading2)
-  text
-```
-
-### Full-width banner image + overlay text
-
-```
-section (padding: "0px")
-  image (imageSize: 100, aspectRatio: "16:9")
-
-section (backgroundColor: "#1A1A2E", padding: "48px 32px", gap: "20px")
-  header (color: "#ffffff", textAlign: "center")
-  text (color: "#CBD5E0", textAlign: "center")
-  button (align: "center")
-```
-
-### Pill-style button (rounded)
-
-Override button style with high `borderRadius`:
-
-```json
-"buttonStyles": {
-  "primary": {
-    "backgroundColor": "#6B4FBB",
-    "color": "#ffffff",
-    "borderRadius": "50px",
-    "fontSize": "16px",
-    "fontWeight": "600",
-    "paddingX": "32px",
-    "paddingY": "14px"
-  }
-}
-```
-
----
-
-## Checklist Before Outputting
-
-- [ ] Every element has a unique `id`
+- [ ] Aesthetic direction chosen and applied consistently
+- [ ] Every element has a unique `id` in `{type}-el-{random6}` format
 - [ ] Every non-root element has a valid `parentId`
-- [ ] `columns` elements contain only `column` children
-- [ ] `column` elements have a `columns` parent
-- [ ] `containerWidth` is `"600px"`
-- [ ] Footer includes `{{unsubscribe_url}}`
-- [ ] `typographyStyles` and `buttonStyles` are defined
-- [ ] No duplicate element IDs
-- [ ] `content` is `null` for container elements (section, columns, column)
-- [ ] Image `content` is a URL string, not null
+- [ ] `columns` contains ONLY `column` children
+- [ ] Root elements have `parentId: null`
+- [ ] `containerWidth` set (default `"600px"`)
+- [ ] `typographyStyles` and `buttonStyles` defined
+- [ ] No duplicate IDs
+- [ ] Container elements (section, columns, column) have `content: null`
+- [ ] Image/logo/video `content` is `""` (empty string, never a URL)
+- [ ] Footer includes `{{manage_preferences_url}}` and `{{workspace.address}}` (no `{{unsubscribe_url}}` or `{{preferences_url}}`)
+- [ ] `html_content` mirrors design_json layout and section order
+- [ ] Both fields passed to MCP — `design_json.elements` is not empty
